@@ -180,9 +180,16 @@ void printParaviewSnapshot() {
  */
  //used to check is the previous iteration had a collision
 void updateBody() {
+  const int bucketNumber = 10;
+  int** buckets = new int*[bucketNumber](); //initialise a pointer to pointers for all [bucketNumber] buckets
+  for(int i=0; i<bucketNumber; i++){
+    buckets[i]* = new int[NumberOfBodies](); //each bucket can hold up to [NumberOfBodies] values
+  }
+  int* bucketPointers = new int[bucketNumber]();
+  static bool prevCol = false; //used to check is the previous iteration had a collision
+
   maxV   = 0.0;
   minDx  = std::numeric_limits<double>::max();
-  static bool prevCol = false;
   // force0 = force along x direction
   // force1 = force along y direction
   // force2 = force along z direction
@@ -193,51 +200,54 @@ void updateBody() {
   static double* prevf0 = new double[NumberOfBodies]();
   static double* prevf1 = new double[NumberOfBodies]();
   static double* prevf2 = new double[NumberOfBodies]();
-  for (int j=0; j<NumberOfBodies; j++){ //loop through all particles
-    for (int i=j+1; i<NumberOfBodies; i++) { //for each other particle do (calculations for previous particles are already done thus start at j+1)
-      
-      //storing calculations that are use multiple times to avoid redundancy
-      const double dist0 = x[i][0]-x[j][0], dist1 = x[i][1]-x[j][1], dist2 = x[i][2]-x[j][2];
-      const double distance = sqrt(dist0*dist0 + dist1*dist1 + dist2*dist2);
+  if(!(t>0)){
+    bucketPointers[1] = NumberOfBodies - 1;
+  }
+  for(int k=0; k<bucketNumber; k++){
+    for (int j=0; j<bucketPointers[k]; j++){ //loop through all particles
+      for (int i=j+1; i<NumberOfBodies; i++) { //for each other particle do (calculations for previous particles are already done thus start at j+1)
+        
+        //storing calculations that are use multiple times to avoid redundancy
+        const double dist0 = x[i][0]-x[j][0], dist1 = x[i][1]-x[j][1], dist2 = x[i][2]-x[j][2];
+        const double distance = sqrt(dist0*dist0 + dist1*dist1 + dist2*dist2);
 
-      // x,y,z forces acting on particles
-      
-      const double a = mass[i]*mass[j] /(distance * distance * distance) ; 
-      //effect of other paritcle on current particle
-      const double f0 = dist0 * a, f1 = dist1 * a, f2 = dist2 * a;
-      force0[j] += f0 ;
-      force1[j] += f1 ;
-      force2[j] += f2 ;
-      //effect of current particle on other particle
-      force0[i] -= f0 ;
-      force1[i] -= f1 ;
-      force2[i] -= f2 ;
-      minDx = std::min( minDx,distance );
+        // x,y,z forces acting on particles
+        
+        const double a = mass[i]*mass[j] /(distance * distance * distance) ; 
+        //effect of other paritcle on current particle
+        const double f0 = dist0 * a, f1 = dist1 * a, f2 = dist2 * a;
+        force0[j] += f0 ;
+        force1[j] += f1 ;
+        force2[j] += f2 ;
+        //effect of current particle on other particle
+        force0[i] -= f0 ;
+        force1[i] -= f1 ;
+        force2[i] -= f2 ;
+        minDx = std::min( minDx,distance );
+      }
+      x[j][0] = x[j][0] + timeStepSize * v[j][0];
+      x[j][1] = x[j][1] + timeStepSize * v[j][1];
+      x[j][2] = x[j][2] + timeStepSize * v[j][2];
+      //Using Adams-Bashforth for velocity to increase accuracy
+      //not used if the first iteration or if a collision happened in the previous iteration (as the prevForce value will be wrong)
+      if(t>0 && !prevCol){
+
+        v[j][0] = v[j][0] + timeStepSize*(1.5 * force0[j]/mass[j] - 0.5 * prevf0[j]/mass[j]);
+        v[j][1] = v[j][1] + timeStepSize*(1.5 * force1[j]/mass[j] - 0.5 * prevf1[j]/mass[j]);
+        v[j][2] = v[j][2] + timeStepSize*(1.5 * force2[j]/mass[j] - 0.5 * prevf2[j]/mass[j]);
+
+      }else{
+
+        v[j][0] = v[j][0] + timeStepSize * force0[j] / mass[j];
+        v[j][1] = v[j][1] + timeStepSize * force1[j] / mass[j];
+        v[j][2] = v[j][2] + timeStepSize * force2[j] / mass[j];
+        prevCol = false;
+      }
+      maxV = std::max(maxV,std::sqrt( v[j][0]*v[j][0] + v[j][1]*v[j][1] + v[j][2]*v[j][2] ));
+      prevf0[j] = force0[j];
+      prevf1[j] = force1[j];
+      prevf2[j] = force2[j];
     }
-    
-    x[j][0] = x[j][0] + timeStepSize * v[j][0];
-    x[j][1] = x[j][1] + timeStepSize * v[j][1];
-    x[j][2] = x[j][2] + timeStepSize * v[j][2];
-    
-    //Using Adams-Bashforth for velocity to increase accuracy
-    //not used if the first iteration or if a collision happened in the previous iteration (as the prevForce value will be wrong)
-    if(t>0 && !prevCol){
-
-      v[j][0] = v[j][0] + timeStepSize*(1.5 * force0[j]/mass[j] - 0.5 * prevf0[j]/mass[j]);
-      v[j][1] = v[j][1] + timeStepSize*(1.5 * force1[j]/mass[j] - 0.5 * prevf1[j]/mass[j]);
-      v[j][2] = v[j][2] + timeStepSize*(1.5 * force2[j]/mass[j] - 0.5 * prevf2[j]/mass[j]);
-
-    }else{
-
-      v[j][0] = v[j][0] + timeStepSize * force0[j] / mass[j];
-      v[j][1] = v[j][1] + timeStepSize * force1[j] / mass[j];
-      v[j][2] = v[j][2] + timeStepSize * force2[j] / mass[j];
-      prevCol = false;
-    }
-    maxV = std::max(maxV,std::sqrt( v[j][0]*v[j][0] + v[j][1]*v[j][1] + v[j][2]*v[j][2] ));
-    prevf0[j] = force0[j];
-    prevf1[j] = force1[j];
-    prevf2[j] = force2[j];
   }
 
   

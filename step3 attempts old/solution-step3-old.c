@@ -178,11 +178,20 @@ void printParaviewSnapshot() {
 /**
  * This is the only operation you are allowed to change in the assignment.
  */
- //used to check is the previous iteration had a collision
+
+
 void updateBody() {
+  const int bucketNumber = 10;
+  int** buckets = new int*[bucketNumber](); //initialise a pointer to pointers for all [bucketNumber] buckets
+  for(int i=0; i<bucketNumber; i++){
+    buckets[i]* = new int[NumberOfBodies](); //each bucket can hold up to [NumberOfBodies] values
+  }
+  int* bucketPointers = new int[bucketNumber]();
+  static bool prevCol = false; //used to check is the previous iteration had a collision
+
   maxV   = 0.0;
   minDx  = std::numeric_limits<double>::max();
-  static bool prevCol = false;
+
   // force0 = force along x direction
   // force1 = force along y direction
   // force2 = force along z direction
@@ -214,31 +223,41 @@ void updateBody() {
       force2[i] -= f2 ;
       minDx = std::min( minDx,distance );
     }
-    
-    x[j][0] = x[j][0] + timeStepSize * v[j][0];
-    x[j][1] = x[j][1] + timeStepSize * v[j][1];
-    x[j][2] = x[j][2] + timeStepSize * v[j][2];
-    
+  }
+
+  
+
+
+
+  //update distances and velocities
+  for(int i=0; i<NumberOfBodies; i++){
+    double alteredTime = timeStepSize;
+  
+    x[i][0] = x[i][0] + alteredTime * v[i][0];
+    x[i][1] = x[i][1] + alteredTime * v[i][1];
+    x[i][2] = x[i][2] + alteredTime * v[i][2];
     //Using Adams-Bashforth for velocity to increase accuracy
     //not used if the first iteration or if a collision happened in the previous iteration (as the prevForce value will be wrong)
     if(t>0 && !prevCol){
 
-      v[j][0] = v[j][0] + timeStepSize*(1.5 * force0[j]/mass[j] - 0.5 * prevf0[j]/mass[j]);
-      v[j][1] = v[j][1] + timeStepSize*(1.5 * force1[j]/mass[j] - 0.5 * prevf1[j]/mass[j]);
-      v[j][2] = v[j][2] + timeStepSize*(1.5 * force2[j]/mass[j] - 0.5 * prevf2[j]/mass[j]);
+      v[i][0] = v[i][0] + alteredTime*(1.5 * force0[i]/mass[i] - 0.5 * prevf0[i]/mass[i]);
+      v[i][1] = v[i][1] + alteredTime*(1.5 * force1[i]/mass[i] - 0.5 * prevf1[i]/mass[i]);
+      v[i][2] = v[i][2] + alteredTime*(1.5 * force2[i]/mass[i] - 0.5 * prevf2[i]/mass[i]);
 
     }else{
 
-      v[j][0] = v[j][0] + timeStepSize * force0[j] / mass[j];
-      v[j][1] = v[j][1] + timeStepSize * force1[j] / mass[j];
-      v[j][2] = v[j][2] + timeStepSize * force2[j] / mass[j];
+      v[i][0] = v[i][0] + alteredTime * force0[i] / mass[i];
+      v[i][1] = v[i][1] + alteredTime * force1[i] / mass[i];
+      v[i][2] = v[i][2] + alteredTime * force2[i] / mass[i];
       prevCol = false;
     }
-    maxV = std::max(maxV,std::sqrt( v[j][0]*v[j][0] + v[j][1]*v[j][1] + v[j][2]*v[j][2] ));
-    prevf0[j] = force0[j];
-    prevf1[j] = force1[j];
-    prevf2[j] = force2[j];
-  }
+    maxV = std::max(maxV,std::sqrt( v[i][0]*v[i][0] + v[i][1]*v[i][1] + v[i][2]*v[i][2] ));
+    prevf0[i] = force0[i];
+    prevf1[i] = force1[i];
+    prevf2[i] = force2[i];
+    
+    }
+  
 
   
   //collision checker, using the square of the distance as a threshold (less error is involved when not square rooting)
@@ -249,7 +268,7 @@ void updateBody() {
       const double squareDist = dist0*dist0 + dist1*dist1 + dist2*dist2;
       if (squareDist <= threshold){ 
         const double newMass = mass[i]+mass[j];
-        for(int n=0; n<3; n++){ 
+        for(int n=0; n<3; n++){
           v[i][n] = (mass[i]*v[i][n] + mass[j]*v[j][n])*(1/newMass);
           x[i][n] = (x[i][n] + x[j][n]) * 0.5;
         }
@@ -269,6 +288,9 @@ void updateBody() {
     std::cout <<  x[0][0] << ", " << x[0][1] << ", " << x[0][2] << std::endl;
     t=tFinal+1;   
   }
+  
+  const double vBucket = maxV / bucketNumber;
+  
 
   t += timeStepSize;
 

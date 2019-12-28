@@ -214,35 +214,30 @@ void updateBody() {
       force2[i] -= f2 ;
       minDx = std::min( minDx,distance );
     }
-  }
-
-
-  //update distances and velocities
-  for(int i=0; i<NumberOfBodies; i++){
-    x[i][0] = x[i][0] + timeStepSize * v[i][0];
-    x[i][1] = x[i][1] + timeStepSize * v[i][1];
-    x[i][2] = x[i][2] + timeStepSize * v[i][2];
+    x[j][0] = x[j][0] + timeStepSize * v[j][0];
+    x[j][1] = x[j][1] + timeStepSize * v[j][1];
+    x[j][2] = x[j][2] + timeStepSize * v[j][2];
     //Using Adams-Bashforth for velocity to increase accuracy
     //not used if the first iteration or if a collision happened in the previous iteration (as the prevForce value will be wrong)
     if(t>0 && !prevCol){
 
-      v[i][0] = v[i][0] + timeStepSize*(1.5 * force0[i]/mass[i] - 0.5 * prevf0[i]/mass[i]);
-      v[i][1] = v[i][1] + timeStepSize*(1.5 * force1[i]/mass[i] - 0.5 * prevf1[i]/mass[i]);
-      v[i][2] = v[i][2] + timeStepSize*(1.5 * force2[i]/mass[i] - 0.5 * prevf2[i]/mass[i]);
+      v[j][0] = v[j][0] + timeStepSize*(1.5 * force0[j]/mass[j] - 0.5 * prevf0[j]/mass[j]);
+      v[j][1] = v[j][1] + timeStepSize*(1.5 * force1[j]/mass[j] - 0.5 * prevf1[j]/mass[j]);
+      v[j][2] = v[j][2] + timeStepSize*(1.5 * force2[j]/mass[j] - 0.5 * prevf2[j]/mass[j]);
 
     }else{
 
-      v[i][0] = v[i][0] + timeStepSize * force0[i] / mass[i];
-      v[i][1] = v[i][1] + timeStepSize * force1[i] / mass[i];
-      v[i][2] = v[i][2] + timeStepSize * force2[i] / mass[i];
+      v[j][0] = v[j][0] + timeStepSize * force0[j] / mass[j];
+      v[j][1] = v[j][1] + timeStepSize * force1[j] / mass[j];
+      v[j][2] = v[j][2] + timeStepSize * force2[j] / mass[j];
       prevCol = false;
     }
-    maxV = std::max(maxV,std::sqrt( v[i][0]*v[i][0] + v[i][1]*v[i][1] + v[i][2]*v[i][2] ));
-    prevf0[i] = force0[i];
-    prevf1[i] = force1[i];
-    prevf2[i] = force2[i];
-    
+    maxV = std::max(maxV,std::sqrt( v[j][0]*v[j][0] + v[j][1]*v[j][1] + v[j][2]*v[j][2] ));
+    prevf0[j] = force0[j];
+    prevf1[j] = force1[j];
+    prevf2[j] = force2[j];
   }
+
   
   //collision checker, using the square of the distance as a threshold (less error is involved when not square rooting)
   const double threshold = 0.01*0.01;
